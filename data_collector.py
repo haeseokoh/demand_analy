@@ -10,6 +10,9 @@ import re
 from typing import Dict, List, Optional
 from config import DB_PATH, STOCK_LIST
 
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 class StockDataCollector:
     def __init__(self, db_path=DB_PATH):
         self.db_path = db_path
@@ -231,30 +234,48 @@ class StockDataCollector:
         conn.commit()
         conn.close()
         print(f"주식 데이터 {saved_count}개 저장 완료")
-    
-    def collect_all_stocks(self, stock_list, page_size=60, delay=0.5):
-        """모든 종목 데이터 수집"""
+        
+    def collect_all_stocks(self, stock_list, page_size=60, delay=0.5, max_workers=5):
+        """모든 종목 데이터 수집 (멀티스레딩 버전)"""
         # 종목 정보 저장
         self.save_stock_info(stock_list)
         
         all_data = []
+        lock = threading.Lock()  # 스레드 간 데이터 동기화를 위한 Lock
         
-        for stock in stock_list:
+        def process_stock(stock):
             print(f"데이터 수집 중: {stock['name']}({stock['code']})")
             
             raw_data = self.fetch_stock_data(stock['code'], page_size)
             if raw_data:
                 parsed_data = self.parse_stock_data(stock['code'], stock['name'], raw_data)
-                all_data.extend(parsed_data)
-                print(f"  - {len(parsed_data)}개 데이터 파싱 완료")
+                with lock:  # 스레드 안전하게 데이터 추가
+                    all_data.extend(parsed_data)
+                print(f"  - {stock['name']}({stock['code']}) {len(parsed_data)}개 데이터 파싱 완료")
+                return len(parsed_data)
             else:
-                print(f"  - 데이터 수집 실패")
+                print(f"  - {stock['name']}({stock['code']}) 데이터 수집 실패")
+                return 0
+        
+        # ThreadPoolExecutor를 사용한 병렬 처리
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 각 종목을 스레드로 제출
+            future_to_stock = {
+                executor.submit(process_stock, stock): stock 
+                for stock in stock_list
+            }
             
-            time.sleep(delay)
+            # 결과 완료 대기
+            for future in as_completed(future_to_stock):
+                stock = future_to_stock[future]
+                try:
+                    result = future.result()
+                except Exception as e:
+                    print(f"{stock['name']}({stock['code']}) 처리 중 오류 발생: {e}")
         
         # 모든 데이터 저장
         self.save_stock_data(all_data)
-        print("모든 종목 데이터 수집 완료")
+        print(f"모든 종목 데이터 수집 완료 (총 {len(all_data)}개 데이터)")
 
 def collect_data():
     """데이터 수집 실행 함수"""

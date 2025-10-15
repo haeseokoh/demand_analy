@@ -13,6 +13,7 @@ class StockAnalyzer:
         """최근 데이터 조회"""
         conn = sqlite3.connect(self.db_path)
         
+        MULTIPLIER_FOR_ALL_STOCKS = 10  # 전체 종목 조회 시 데이터 양을 늘리기 위한 배수
         if stock_code:
             query = '''
             SELECT * FROM stock_supply_demand 
@@ -27,7 +28,7 @@ class StockAnalyzer:
             ORDER BY date DESC 
             LIMIT ?
             '''
-            df = pd.read_sql_query(query, conn, params=(days * 10,))  # 더 많은 데이터 가져오기
+            df = pd.read_sql_query(query, conn, params=(days * MULTIPLIER_FOR_ALL_STOCKS,))  # 더 많은 데이터 가져오기
         
         conn.close()
         return df

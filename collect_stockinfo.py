@@ -105,7 +105,7 @@ def download_korean_stock_list():
         try:
             df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
             print("openpyxl 엔진으로 성공적으로 읽었습니다.")
-        except:
+        except Exception:
             # 실패하면 xlrd로 시도 (xls 형식)
             try:
                 df = pd.read_excel(BytesIO(response.content), engine='xlrd')
@@ -279,41 +279,6 @@ def analyze_stock_data():
         print(result_df)
     
     conn.close()
-
-
-def get_stock_codes(limit=700):
-    conn = sqlite3.connect('stock_supply_data.db')
-    
-    # 시가총액 상위 700개 종목명 조회
-    query1 = "SELECT 종목명 FROM stock_data ORDER BY 시가총액 DESC LIMIT {}".format(limit)
-    df_stocks = pd.read_sql_query(query1, conn)
-    
-    # 회사 정보 조회
-    query2 = "SELECT 회사명, 시장구분, 종목코드, 업종, 주요제품 FROM stock_Companies"
-    df_companies = pd.read_sql_query(query2, conn)
-    
-    # 종목명 매칭
-    stock_codes = []
-    stock_list = []
-    
-    for stock_name in df_stocks['종목명']:
-        match = df_companies[df_companies['회사명'] == stock_name]
-        if not match.empty:
-            stock_codes.append(match.iloc[0]['종목코드'])
-            stock_list.append({'code': match.iloc[0]['종목코드'], 
-             'name': match.iloc[0]['회사명'], 
-             'market': match.iloc[0]['시장구분'], 
-             'industry': match.iloc[0]['업종'], 
-             'product': match.iloc[0]['주요제품']})
-            
-    conn.close()
-    
-    print(f"총 {len(df_stocks)}개 중 {len(stock_codes)}개 매칭됨")
-    # print("매칭된 종목:", stock_list)
-    # print("매칭된 종목코드:", stock_codes)
-    
-    # return stock_codes
-    return stock_list
 
 # 메인 실행 부분
 if __name__ == "__main__":
