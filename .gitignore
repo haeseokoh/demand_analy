@@ -1,6 +1,2 @@
-__pycache__/analysis.cpython-39.pyc
-__pycache__/collect_stockdemand.cpython-39.pyc
-__pycache__/collect_stockinfo.cpython-39.pyc
-__pycache__/config.cpython-39.pyc
-__pycache__/data_collector.cpython-39.pyc
-backup/stock_demand.zip
+/__pycache__/
+/backup/
